@@ -27,8 +27,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * This is the most commonly used base transport. It takes an InputStream
- * and an OutputStream and uses those to perform all transport operations.
+ * This is the most commonly used base transport. It takes an InputStream or
+ * an OutputStream or both and uses it/them to perform transport operations.
  * This allows for compatibility with all the nice constructs Java already
  * has to provide a variety of types of streams.
  *
@@ -50,7 +50,7 @@ public class TIOStreamTransport extends TTransport {
   protected TIOStreamTransport() {}
 
   /**
-   * Input stream constructor.
+   * Input stream constructor, constructs an input only transport.
    *
    * @param is Input stream to read from
    */
@@ -59,9 +59,9 @@ public class TIOStreamTransport extends TTransport {
   }
 
   /**
-   * Output stream constructor.
+   * Output stream constructor, constructs an output only transport.
    *
-   * @param os Output stream to read from
+   * @param os Output stream to write to
    */
   public TIOStreamTransport(OutputStream os) {
     outputStream_ = os;
@@ -79,13 +79,11 @@ public class TIOStreamTransport extends TTransport {
   }
 
   /**
-   * The streams must already be open at construction time, so this should
-   * always return true.
    *
-   * @return true
+   * @return false after close is called.
    */
   public boolean isOpen() {
-    return true;
+    return inputStream_ != null || outputStream_ != null;
   }
 
   /**
@@ -97,20 +95,23 @@ public class TIOStreamTransport extends TTransport {
    * Closes both the input and output streams.
    */
   public void close() {
-    if (inputStream_ != null) {
-      try {
-        inputStream_.close();
-      } catch (IOException iox) {
-        LOGGER.warn("Error closing input stream.", iox);
+    try {
+      if (inputStream_ != null) {
+        try {
+          inputStream_.close();
+        } catch (IOException iox) {
+          LOGGER.warn("Error closing input stream.", iox);
+        }
       }
+      if (outputStream_ != null) {
+        try {
+          outputStream_.close();
+        } catch (IOException iox) {
+          LOGGER.warn("Error closing output stream.", iox);
+        }
+      }
+    } finally {
       inputStream_ = null;
-    }
-    if (outputStream_ != null) {
-      try {
-        outputStream_.close();
-      } catch (IOException iox) {
-        LOGGER.warn("Error closing output stream.", iox);
-      }
       outputStream_ = null;
     }
   }
@@ -129,7 +130,7 @@ public class TIOStreamTransport extends TTransport {
       throw new TTransportException(TTransportException.UNKNOWN, iox);
     }
     if (bytesRead < 0) {
-      throw new TTransportException(TTransportException.END_OF_FILE);
+      throw new TTransportException(TTransportException.END_OF_FILE, "Socket is closed by peer.");
     }
     return bytesRead;
   }

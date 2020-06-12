@@ -17,9 +17,11 @@
 
 use std::convert::Into;
 
+use super::{
+    TFieldIdentifier, TInputProtocol, TListIdentifier, TMapIdentifier, TMessageIdentifier,
+    TSetIdentifier, TStructIdentifier,
+};
 use ProtocolErrorKind;
-use super::{TFieldIdentifier, TInputProtocol, TListIdentifier, TMapIdentifier, TMessageIdentifier,
-            TSetIdentifier, TStructIdentifier};
 
 /// `TInputProtocol` required to use a `TMultiplexedProcessor`.
 ///
@@ -40,7 +42,6 @@ use super::{TFieldIdentifier, TInputProtocol, TListIdentifier, TMapIdentifier, T
 /// Create and use a `TStoredInputProtocol`.
 ///
 /// ```no_run
-/// use thrift;
 /// use thrift::protocol::{TInputProtocol, TMessageIdentifier, TMessageType, TOutputProtocol};
 /// use thrift::protocol::{TBinaryInputProtocol, TBinaryOutputProtocol, TStoredInputProtocol};
 /// use thrift::server::TProcessor;
@@ -51,8 +52,8 @@ use super::{TFieldIdentifier, TInputProtocol, TListIdentifier, TMapIdentifier, T
 /// impl TProcessor for ActualProcessor {
 ///     fn process(
 ///         &self,
-///         _: &mut TInputProtocol,
-///         _: &mut TOutputProtocol
+///         _: &mut dyn TInputProtocol,
+///         _: &mut dyn TOutputProtocol
 ///     ) -> thrift::Result<()> {
 ///         unimplemented!()
 ///     }
@@ -78,7 +79,7 @@ use super::{TFieldIdentifier, TInputProtocol, TListIdentifier, TMapIdentifier, T
 /// ```
 // FIXME: implement Debug
 pub struct TStoredInputProtocol<'a> {
-    inner: &'a mut TInputProtocol,
+    inner: &'a mut dyn TInputProtocol,
     message_ident: Option<TMessageIdentifier>,
 }
 
@@ -89,7 +90,7 @@ impl<'a> TStoredInputProtocol<'a> {
     /// with service name stripped - that will be passed to
     /// `wrapped.read_message_begin(...)`.
     pub fn new(
-        wrapped: &mut TInputProtocol,
+        wrapped: &mut dyn TInputProtocol,
         message_ident: TMessageIdentifier,
     ) -> TStoredInputProtocol {
         TStoredInputProtocol {
@@ -101,16 +102,12 @@ impl<'a> TStoredInputProtocol<'a> {
 
 impl<'a> TInputProtocol for TStoredInputProtocol<'a> {
     fn read_message_begin(&mut self) -> ::Result<TMessageIdentifier> {
-        self.message_ident
-            .take()
-            .ok_or_else(
-                || {
-                    ::errors::new_protocol_error(
-                        ProtocolErrorKind::Unknown,
-                        "message identifier already read",
-                    )
-                },
+        self.message_ident.take().ok_or_else(|| {
+            ::errors::new_protocol_error(
+                ProtocolErrorKind::Unknown,
+                "message identifier already read",
             )
+        })
     }
 
     fn read_message_end(&mut self) -> ::Result<()> {

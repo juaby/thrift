@@ -22,12 +22,12 @@ open class TClient {
   public let inProtocol: TProtocol
   public let outProtocol: TProtocol
 
-  public init(inoutProtocol: TProtocol) {
+  required public init(inoutProtocol: TProtocol) {
     self.inProtocol = inoutProtocol
     self.outProtocol = inoutProtocol
   }
 
-  public init(inProtocol: TProtocol, outProtocol: TProtocol) {
+  required public init(inProtocol: TProtocol, outProtocol: TProtocol) {
     self.inProtocol = inProtocol
     self.outProtocol = outProtocol
   }
@@ -38,18 +38,5 @@ open class TAsyncClient<Protocol: TProtocol, Factory: TAsyncTransportFactory> {
   public var factory: Factory
   public init(with protocol: Protocol.Type, factory: Factory) {
     self.factory = factory
-  }
-}
-
-
-public enum TAsyncResult<T> {
-  case success(T)
-  case error(Swift.Error)
-  
-  public func value() throws -> T {
-    switch self {
-    case .success(let t): return t
-    case .error(let e): throw e
-    }
   }
 }

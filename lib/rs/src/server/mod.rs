@@ -17,8 +17,8 @@
 
 //! Types used to implement a Thrift server.
 
-use {ApplicationError, ApplicationErrorKind};
 use protocol::{TInputProtocol, TMessageIdentifier, TMessageType, TOutputProtocol};
+use {ApplicationError, ApplicationErrorKind};
 
 mod multiplexed;
 mod threaded;
@@ -39,7 +39,6 @@ pub use self::threaded::TServer;
 /// a Thrift service `SimpleService`.
 ///
 /// ```no_run
-/// use thrift;
 /// use thrift::protocol::{TInputProtocol, TOutputProtocol};
 /// use thrift::server::TProcessor;
 ///
@@ -57,7 +56,7 @@ pub use self::threaded::TServer;
 ///
 /// // `TProcessor` implementation for `SimpleService`
 /// impl TProcessor for SimpleServiceSyncProcessor {
-///     fn process(&self, i: &mut TInputProtocol, o: &mut TOutputProtocol) -> thrift::Result<()> {
+///     fn process(&self, i: &mut dyn TInputProtocol, o: &mut dyn TOutputProtocol) -> thrift::Result<()> {
 ///         unimplemented!();
 ///     }
 /// }
@@ -92,7 +91,7 @@ pub trait TProcessor {
     /// the response to `o`.
     ///
     /// Returns `()` if the handler was executed; `Err` otherwise.
-    fn process(&self, i: &mut TInputProtocol, o: &mut TOutputProtocol) -> ::Result<()>;
+    fn process(&self, i: &mut dyn TInputProtocol, o: &mut dyn TOutputProtocol) -> ::Result<()>;
 }
 
 /// Convenience function used in generated `TProcessor` implementations to
@@ -100,7 +99,7 @@ pub trait TProcessor {
 pub fn handle_process_result(
     msg_ident: &TMessageIdentifier,
     res: ::Result<()>,
-    o_prot: &mut TOutputProtocol,
+    o_prot: &mut dyn TOutputProtocol,
 ) -> ::Result<()> {
     if let Err(e) = res {
         let e = match e {

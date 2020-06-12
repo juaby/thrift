@@ -26,7 +26,6 @@
 #include <vector>
 
 #include <stdlib.h>
-#include <boost/tokenizer.hpp>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sstream>
@@ -35,6 +34,7 @@
 
 #include "thrift/platform.h"
 #include "t_oop_generator.h"
+
 using namespace std;
 
 
@@ -70,24 +70,24 @@ class t_cl_generator : public t_oop_generator {
     copy_options_ = option_string;
   }
 
-  void init_generator();
-  void close_generator();
+  void init_generator() override;
+  void close_generator() override;
 
-  void generate_typedef     (t_typedef*  ttypedef);
-  void generate_enum        (t_enum*     tenum);
-  void generate_const       (t_const*    tconst);
-  void generate_struct      (t_struct*   tstruct);
-  void generate_xception    (t_struct*   txception);
-  void generate_service     (t_service*  tservice);
-  void generate_cl_struct (std::ofstream& out, t_struct* tstruct, bool is_exception);
-  void generate_cl_struct_internal (std::ofstream& out, t_struct* tstruct, bool is_exception);
-  void generate_exception_sig(std::ofstream& out, t_function* f);
+  void generate_typedef     (t_typedef*  ttypedef) override;
+  void generate_enum        (t_enum*     tenum) override;
+  void generate_const       (t_const*    tconst) override;
+  void generate_struct      (t_struct*   tstruct) override;
+  void generate_xception    (t_struct*   txception) override;
+  void generate_service     (t_service*  tservice) override;
+  void generate_cl_struct (std::ostream& out, t_struct* tstruct, bool is_exception);
+  void generate_cl_struct_internal (std::ostream& out, t_struct* tstruct, bool is_exception);
+  void generate_exception_sig(std::ostream& out, t_function* f);
   std::string render_const_value(t_type* type, t_const_value* value);
 
   std::string cl_autogen_comment();
-  void asdf_def(std::ofstream &out);
-  void package_def(std::ofstream &out);
-  void package_in(std::ofstream &out);
+  void asdf_def(std::ostream &out);
+  void package_def(std::ostream &out);
+  void package_in(std::ostream &out);
   std::string generated_package();
   std::string prefix(std::string name);
   std::string package_of(t_program* program);
@@ -107,9 +107,9 @@ class t_cl_generator : public t_oop_generator {
   /**
    * Isolate the variable definitions, as they can require structure definitions
    */
-  std::ofstream f_asd_;
-  std::ofstream f_types_;
-  std::ofstream f_vars_;
+  ofstream_with_content_based_conditional_update f_asd_;
+  ofstream_with_content_based_conditional_update f_types_;
+  ofstream_with_content_based_conditional_update f_vars_;
 
   std::string copy_options_;
 
@@ -128,9 +128,9 @@ void t_cl_generator::init_generator() {
   string f_types_name = program_dir + "/" + program_name_ + "-types.lisp";
   string f_vars_name = program_dir + "/" + program_name_ + "-vars.lisp";
 
-  f_types_.open(f_types_name.c_str());
+  f_types_.open(f_types_name);
   f_types_ << cl_autogen_comment() << endl;
-  f_vars_.open(f_vars_name.c_str());
+  f_vars_.open(f_vars_name);
   f_vars_ << cl_autogen_comment() << endl;
 
   package_def(f_types_);
@@ -139,7 +139,7 @@ void t_cl_generator::init_generator() {
 
   if (!no_asd) {
     string f_asd_name = program_dir + "/" + system_prefix + program_name_ + ".asd";
-    f_asd_.open(f_asd_name.c_str());
+    f_asd_.open(f_asd_name);
     f_asd_ << cl_autogen_comment() << endl;
     asdf_def(f_asd_);
   }
@@ -152,8 +152,8 @@ string t_cl_generator::render_includes() {
   const vector<t_program*>& includes = program_->get_includes();
   string result = "";
   result += ":depends-on (:thrift";
-  for (size_t i = 0; i < includes.size(); ++i) {
-    result += " :" + system_prefix + underscore(includes[i]->get_name());
+  for (auto include : includes) {
+    result += " :" + system_prefix + underscore(include->get_name());
   }
   result += ")\n";
   return result;
@@ -195,7 +195,7 @@ string t_cl_generator::generated_package() {
   return program_->get_namespace("cpp");
 }
 
-void t_cl_generator::asdf_def(std::ofstream &out) {
+void t_cl_generator::asdf_def(std::ostream &out) {
   out << "(asdf:defsystem #:" << system_prefix << program_name_ << endl;
   indent_up();
   out << indent() << render_includes()
@@ -209,21 +209,21 @@ void t_cl_generator::asdf_def(std::ofstream &out) {
 /***
  * Generate a package definition. Add use references equivalent to the idl file's include statements.
  */
-void t_cl_generator::package_def(std::ofstream &out) {
+void t_cl_generator::package_def(std::ostream &out) {
   const vector<t_program*>& includes = program_->get_includes();
 
   out << "(thrift:def-package :" << package();
   if ( includes.size() > 0 ) {
     out << " :use (";
-    for (size_t i = 0; i < includes.size(); ++i) {
-      out << " :" << includes[i]->get_name();
+    for (auto include : includes) {
+      out << " :" << include->get_name();
     }
     out << ")";
   }
   out << ")" << endl << endl;
 }
 
-void t_cl_generator::package_in(std::ofstream &out) {
+void t_cl_generator::package_in(std::ostream &out) {
   out << "(cl:in-package :" << package() << ")" << endl << endl;
 }
 
@@ -381,7 +381,7 @@ void t_cl_generator::generate_xception(t_struct* txception) {
   generate_cl_struct(f_types_, txception, true);
 }
 
-void t_cl_generator::generate_cl_struct_internal(std::ofstream& out, t_struct* tstruct, bool is_exception) {
+void t_cl_generator::generate_cl_struct_internal(std::ostream& out, t_struct* tstruct, bool is_exception) {
   (void)is_exception;
   const vector<t_field*>& members = tstruct->get_members();
   vector<t_field*>::const_iterator m_iter;
@@ -417,7 +417,7 @@ void t_cl_generator::generate_cl_struct_internal(std::ofstream& out, t_struct* t
   out << ")";
 }
 
-void t_cl_generator::generate_cl_struct(std::ofstream& out, t_struct* tstruct, bool is_exception = false) {
+void t_cl_generator::generate_cl_struct(std::ostream& out, t_struct* tstruct, bool is_exception = false) {
   std::string name = type_name(tstruct);
   out << (is_exception ? "(thrift:def-exception " : "(thrift:def-struct ") <<
       prefix(name) << endl;
@@ -432,7 +432,7 @@ void t_cl_generator::generate_cl_struct(std::ofstream& out, t_struct* tstruct, b
   out << ")" << endl << endl;
 }
 
-void t_cl_generator::generate_exception_sig(std::ofstream& out, t_function* f) {
+void t_cl_generator::generate_exception_sig(std::ostream& out, t_function* f) {
   generate_cl_struct_internal(out, f->get_xceptions(), true);
 }
 

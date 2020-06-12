@@ -116,7 +116,6 @@ class TBinaryProtocolTests: XCTestCase {
     do {
       try writeVal.write(to: proto)
       try? transport.flush()
-
     } catch let error {
       XCTAssertFalse(true, "Caught Error attempting to write \(error)")
     }
@@ -129,6 +128,29 @@ class TBinaryProtocolTests: XCTestCase {
       XCTAssertFalse(true, "Caught Error attempting to read \(error)")
     }
   }
+
+  func testUnsafeBitcastUpdate() {
+    let value: Double = 3.14159
+    let val: Int64 = 31415926
+    let uval: UInt64 = 31415926
+    
+    let i64 = Int64(bitPattern: value.bitPattern)
+    let ubc = unsafeBitCast(value, to: Int64.self)
+    
+    XCTAssertEqual(i64, ubc, "Bitcast Double-> i64 Values don't match")
+    
+    let dbl = Double(bitPattern: UInt64(val))
+    let ubdb = unsafeBitCast(val, to: Double.self)
+    
+    XCTAssertEqual(dbl, ubdb, "Bitcast i64 -> Double Values don't match")
+    
+    let db2 = Double(bitPattern: uval)
+    let usbc2 = unsafeBitCast(uval, to: Double.self)
+    
+    XCTAssertEqual(db2, usbc2, "Bitcast u64 -> Double Values don't match")
+
+    
+  }
   
   static var allTests : [(String, (TBinaryProtocolTests) -> () throws -> Void)] {
     return [
@@ -140,7 +162,8 @@ class TBinaryProtocolTests: XCTestCase {
       ("testBoolWriteRead", testBoolWriteRead),
       ("testStringWriteRead", testStringWriteRead),
       ("testDataWriteRead", testDataWriteRead),
-      ("testStructWriteRead", testStructWriteRead)
+      ("testStructWriteRead", testStructWriteRead),
+      ("testUnsafeBitcastUpdate", testUnsafeBitcastUpdate)
     ]
   }
 }

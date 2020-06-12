@@ -45,6 +45,7 @@ check_include_file(sys/socket.h HAVE_SYS_SOCKET_H)
 check_include_file(sys/stat.h HAVE_SYS_STAT_H)
 check_include_file(sys/time.h HAVE_SYS_TIME_H)
 check_include_file(sys/un.h HAVE_SYS_UN_H)
+check_include_file(poll.h HAVE_POLL_H)
 check_include_file(sys/poll.h HAVE_SYS_POLL_H)
 check_include_file(sys/select.h HAVE_SYS_SELECT_H)
 check_include_file(sched.h HAVE_SCHED_H)
@@ -63,7 +64,7 @@ include(CheckCXXSourceCompiles)
 check_cxx_source_compiles(
   "
   #include <string.h>
-  int main(){char b;char *a = strerror_r(0, &b, 0); return(0);}
+  int main(){char b;char *a = strerror_r(0, &b, 0); static_cast<void>(a); return(0);}
   "
   STRERROR_R_CHAR_P)
 

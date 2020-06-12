@@ -20,6 +20,7 @@
 package org.apache.thrift.server;
 
 import java.util.Random;
+import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
@@ -29,18 +30,15 @@ import java.util.concurrent.TimeUnit;
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSaslTransportException;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * Server which uses Java's built in ThreadPool management to spawn off
- * a worker pool that
- *
+ * a worker pool that deals with client connections in blocking way.
  */
 public class TThreadPoolServer extends TServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(TThreadPoolServer.class.getName());
@@ -109,6 +107,7 @@ public class TThreadPoolServer extends TServer {
 
   // Executor service for handling client connections
   private ExecutorService executorService_;
+  private WeakHashMap<WorkerProcess, Boolean> activeWorkers = new WeakHashMap<>();
 
   private final TimeUnit stopTimeoutUnit;
 
@@ -148,7 +147,7 @@ public class TThreadPoolServer extends TServer {
   protected ExecutorService getExecutorService() {
     return executorService_;
   }
-  
+
   protected boolean preServe() {
   	try {
       serverTransport_.listen();
@@ -163,7 +162,6 @@ public class TThreadPoolServer extends TServer {
     }
     stopped_ = false;
     setServing(true);
-    
     return true;
   }
 
@@ -173,13 +171,14 @@ public class TThreadPoolServer extends TServer {
   	}
 
   	execute();
-  	waitForShutdown();
-    
+    if (!waitForShutdown()) {
+  	  LOGGER.error("Shutdown is not done after " + stopTimeoutVal + stopTimeoutUnit);
+    }
+
     setServing(false);
   }
-  
+
   protected void execute() {
-    int failureCount = 0;
     while (!stopped_) {
       try {
         TTransport client = serverTransport_.accept();
@@ -190,6 +189,7 @@ public class TThreadPoolServer extends TServer {
         while(true) {
           try {
             executorService_.execute(wp);
+            activeWorkers.put(wp, Boolean.TRUE);
             break;
           } catch(Throwable t) {
             if (t instanceof RejectedExecutionException) {
@@ -226,16 +226,13 @@ public class TThreadPoolServer extends TServer {
         }
       } catch (TTransportException ttx) {
         if (!stopped_) {
-          ++failureCount;
           LOGGER.warn("Transport error occurred during acceptance of message.", ttx);
         }
       }
     }
   }
-  
-  protected void waitForShutdown() {
-  	executorService_.shutdown();
 
+  protected boolean waitForShutdown() {
     // Loop until awaitTermination finally does return without a interrupted
     // exception. If we don't do this, then we'll shut down prematurely. We want
     // to let the executorService clear it's task queue, closing client sockets
@@ -245,18 +242,23 @@ public class TThreadPoolServer extends TServer {
     while (timeoutMS >= 0) {
       try {
         executorService_.awaitTermination(timeoutMS, TimeUnit.MILLISECONDS);
-        break;
+        return true;
       } catch (InterruptedException ix) {
         long newnow = System.currentTimeMillis();
         timeoutMS -= (newnow - now);
         now = newnow;
       }
     }
+    return false;
   }
 
   public void stop() {
     stopped_ = true;
     serverTransport_.interrupt();
+    executorService_.shutdown();
+    for (WorkerProcess wp : activeWorkers.keySet()) {
+      wp.stop();
+    }
   }
 
   private class WorkerProcess implements Runnable {
@@ -307,18 +309,19 @@ public class TThreadPoolServer extends TServer {
               eventHandler.processContext(connectionContext, inputTransport, outputTransport);
             }
 
-            if(stopped_ || !processor.process(inputProtocol, outputProtocol)) {
+            if (stopped_) {
               break;
             }
+            processor.process(inputProtocol, outputProtocol);
         }
-      } catch (TSaslTransportException ttx) {
-        // Something thats not SASL was in the stream, continue silently
-      } catch (TTransportException ttx) {
-        // Assume the client died and continue silently
-      } catch (TException tx) {
-        LOGGER.error("Thrift error occurred during processing of message.", tx);
       } catch (Exception x) {
-        LOGGER.error("Error occurred during processing of message.", x);
+        // We'll usually receive RuntimeException types here
+        // Need to unwrap to ascertain real causing exception before we choose to ignore
+        // Ignore err-logging all transport-level/type exceptions
+        if (!isIgnorableException(x)) {
+          // Log the exception at error level and continue
+          LOGGER.error((x instanceof TException? "Thrift " : "") + "Error occurred during processing of message.", x);
+        }
       } finally {
         if (eventHandler != null) {
           eventHandler.deleteContext(connectionContext, inputProtocol, outputProtocol);
@@ -333,6 +336,30 @@ public class TThreadPoolServer extends TServer {
           client_.close();
         }
       }
+    }
+
+    private boolean isIgnorableException(Exception x) {
+      TTransportException tTransportException = null;
+
+      if (x instanceof TTransportException) {
+        tTransportException = (TTransportException)x;
+      }
+      else if (x.getCause() instanceof TTransportException) {
+        tTransportException = (TTransportException)x.getCause();
+      }
+
+      if (tTransportException != null) {
+        switch(tTransportException.getType()) {
+          case TTransportException.END_OF_FILE:
+          case TTransportException.TIMED_OUT:
+            return true;
+        }
+      }
+      return false;
+    }
+
+    private void stop() {
+      client_.close();
     }
   }
 }

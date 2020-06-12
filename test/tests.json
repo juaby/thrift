@@ -32,7 +32,8 @@
       "framed"
     ],
     "sockets": [
-      "ip"
+      "ip",
+      "domain"
     ],
     "protocols": [
       "binary",
@@ -75,7 +76,8 @@
     "transports": [
       "http",
       "buffered",
-      "framed"
+      "framed",
+      "zlib"
     ],
     "sockets": [
       "ip",
@@ -105,7 +107,8 @@
     "transports": [
       "buffered",
       "framed",
-      "http"
+      "http",
+      "zlib"
     ],
     "sockets": [
       "ip",
@@ -114,7 +117,8 @@
     "protocols": [
       "binary",
       "compact",
-      "json"
+      "json",
+      "header"
     ],
     "workdir": "go/bin"
   },
@@ -149,7 +153,8 @@
     "transports": [
       "buffered",
       "framed",
-      "framed:fastframed"
+      "framed:fastframed",
+      "zlib"
     ],
     "sockets": [
       "ip",
@@ -188,7 +193,8 @@
     "transports": [
       "buffered",
       "framed",
-      "http"
+      "http",
+      "websocket"
     ],
     "sockets": [
       "ip",
@@ -198,7 +204,8 @@
     "protocols": [
       "compact",
       "binary",
-      "json"
+      "json",
+      "header"
     ],
     "workdir": "../lib/nodejs/test"
   },
@@ -250,30 +257,34 @@
         "--verbose",
         "--host=localhost",
         "--genpydir=gen-py"
-      ],
-      "protocols": [
-        "multi",
-        "multi:multia",
-        "multic",
-        "multic:multiac",
-        "multij"
       ]
     },
     "transports": [
       "buffered",
       "framed",
-      "http"
+      "http",
+      "zlib"
     ],
     "sockets": [
       "ip",
-      "ip-ssl"
+      "ip-ssl",
+      "domain"
     ],
     "protocols": [
-      "compact",
       "binary",
-      "json",
       "binary:accel",
-      "compact:accelc"
+      "compact",
+      "compact:accelc",
+      "header",
+      "json",
+      "multi",
+      "multi:multia",
+      "multia",
+      "multiac",
+      "multic",
+      "multic:multiac",
+      "multih",
+      "multij"
     ],
     "workdir": "py"
   },
@@ -296,30 +307,34 @@
         "TestClient.py",
         "--host=localhost",
         "--genpydir=gen-py"
-      ],
-      "protocols": [
-        "multi",
-        "multi:multia",
-        "multic",
-        "multic:multiac",
-        "multij"
       ]
     },
     "transports": [
       "buffered",
       "framed",
-      "http"
+      "http",
+      "zlib"
     ],
     "sockets": [
       "ip",
-      "ip-ssl"
+      "ip-ssl",
+      "domain"
     ],
     "protocols": [
-      "compact",
       "binary",
-      "json",
       "binary:accel",
-      "compact:accelc"
+      "compact",
+      "compact:accelc",
+      "header",
+      "json",
+      "multi",
+      "multi:multia",
+      "multia",
+      "multiac",
+      "multic",
+      "multic:multiac",
+      "multih",
+      "multij"
     ],
     "workdir": "py"
   },
@@ -351,7 +366,9 @@
     "transports": [
       "buffered",
       "http",
-      "framed"
+      "framed",
+      "zlib",
+      "websocket"
     ],
     "sockets": [
       "ip",
@@ -379,7 +396,7 @@
       ]
     },
     "client": {
-      "timeout": 5,
+      "timeout": 10,
       "command": [
         "ruby",
         "../integration/TestClient.rb",
@@ -404,48 +421,7 @@
     "workdir": "rb/gen-rb"
   },
   {
-    "name": "csharp",
-    "env": {
-      "MONO_PATH": "../../lib/csharp/"
-    },
-    "transports": [
-      "buffered",
-      "framed"
-    ],
-    "sockets": [
-      "ip",
-      "ip-ssl"
-    ],
-    "protocols": [
-      "binary",
-      "compact",
-      "json"
-    ],
-    "server": {
-      "command": [
-        "mono",
-        "TestClientServer.exe",
-        "server"
-      ]
-    },
-    "client": {
-      "timeout": 9,
-      "command": [
-        "mono",
-        "TestClientServer.exe",
-        "client"
-      ],
-      "protocols": [
-        "multi",
-        "multic",
-        "multi:binary",
-        "multic:compact"
-      ]
-    },
-    "workdir": "csharp"
-  },
-  {
-    "name": "netcore",
+    "name": "netstd",
     "transports": [
       "buffered",
       "framed"
@@ -478,7 +454,7 @@
         "client"
       ]
     },
-        "workdir": "netcore"
+        "workdir": "netstd"
   },
   {
     "name": "perl",
@@ -537,8 +513,9 @@
       ],
       "protocols": [
         "binary",
+        "binary:accel",
         "compact",
-        "binary:accel"
+        "json"
       ],
       "command": [
         "php",
@@ -556,6 +533,7 @@
   {
     "name": "dart",
     "client": {
+      "timeout": 30,
       "transports": [
         "buffered",
         "framed",
@@ -571,7 +549,9 @@
       ],
       "command": [
         "dart",
-        "test_client/bin/main.dart"
+	    "--enable-asserts",
+        "test_client/bin/main.dart",
+	    "--verbose"
       ]
     },
     "workdir": "dart"
@@ -597,9 +577,9 @@
         "true",
         "-noshell",
         "-pa",
-        "../../lib/erl/ebin/",
+        "../../lib/erl/_build/default/lib/thrift/ebin/",
         "-pa",
-        "./ebin",
+        "./_build/default/lib/thrift_test/ebin",
         "-s",
         "test_client",
         "-s",
@@ -615,9 +595,9 @@
         "true",
         "-noshell",
         "-pa",
-        "../../lib/erl/ebin/",
+        "../../lib/erl/_build/default/lib/thrift/ebin/",
         "-pa",
-        "./ebin",
+        "./_build/default/lib/thrift_test/ebin",
         "-s",
         "test_thrift_server",
         "-extra"
@@ -712,5 +692,32 @@
       "multic"
     ],
     "workdir": "rs/bin"
+  },
+  {
+    "name": "nodets",
+    "env": {
+      "NODE_PATH": "../lib"
+    },
+    "server": {
+      "command": [
+        "runServer.sh"
+      ]
+    },
+    "client": {
+      "timeout": 6,
+      "command": [
+        "runClient.sh"
+      ]
+    },
+    "protocols": [
+      "binary"
+    ],
+    "sockets": [
+      "ip"
+    ],
+    "transports": [
+      "buffered"
+    ],
+    "workdir": "../lib/nodets/test"
   }
 ]

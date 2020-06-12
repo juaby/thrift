@@ -1,3 +1,3 @@
 class Thrift {
-	let version = "0.0.1"
+	let version = "0.14.0"
 }

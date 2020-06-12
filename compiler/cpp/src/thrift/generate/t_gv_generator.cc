@@ -67,17 +67,17 @@ public:
   /**
    * Init and end of generator
    */
-  void init_generator();
-  void close_generator();
+  void init_generator() override;
+  void close_generator() override;
 
   /**
    * Program-level generation functions
    */
-  void generate_typedef(t_typedef* ttypedef);
-  void generate_enum(t_enum* tenum);
-  void generate_const(t_const* tconst);
-  void generate_struct(t_struct* tstruct);
-  void generate_service(t_service* tservice);
+  void generate_typedef(t_typedef* ttypedef) override;
+  void generate_enum(t_enum* tenum) override;
+  void generate_const(t_const* tconst) override;
+  void generate_struct(t_struct* tstruct) override;
+  void generate_service(t_service* tservice) override;
 
 protected:
   /**
@@ -87,7 +87,7 @@ protected:
   void print_const_value(t_type* type, t_const_value* tvalue);
 
 private:
-  std::ofstream f_out_;
+  ofstream_with_content_based_conditional_update f_out_;
   std::list<string> edges;
   bool exception_arrows;
 };

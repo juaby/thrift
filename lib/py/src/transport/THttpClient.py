@@ -19,7 +19,6 @@
 
 from io import BytesIO
 import os
-import socket
 import ssl
 import sys
 import warnings
@@ -128,9 +127,6 @@ class THttpClient(TTransportBase):
         return self.__http is not None
 
     def setTimeout(self, ms):
-        if not hasattr(socket, 'getdefaulttimeout'):
-            raise NotImplementedError
-
         if ms is None:
             self.__timeout = None
         else:
@@ -144,17 +140,6 @@ class THttpClient(TTransportBase):
 
     def write(self, buf):
         self.__wbuf.write(buf)
-
-    def __withTimeout(f):
-        def _f(*args, **kwargs):
-            orig_timeout = socket.getdefaulttimeout()
-            socket.setdefaulttimeout(args[0].__timeout)
-            try:
-                result = f(*args, **kwargs)
-            finally:
-                socket.setdefaulttimeout(orig_timeout)
-            return result
-        return _f
 
     def flush(self):
         if self.isOpen():
@@ -201,6 +186,6 @@ class THttpClient(TTransportBase):
         self.message = self.__http_response.reason
         self.headers = self.__http_response.msg
 
-    # Decorate if we know how to timeout
-    if hasattr(socket, 'getdefaulttimeout'):
-        flush = __withTimeout(flush)
+        # Saves the cookie sent by the server response
+        if 'Set-Cookie' in self.headers:
+            self.__http.putheader('Cookie', self.headers['Set-Cookie'])
